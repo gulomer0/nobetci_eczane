@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:lottie/lottie.dart' as Lottie;
 import 'package:nobetci_eczane/DetaySayfa.dart';
+import 'package:http/http.dart' as http;
 
 void main() {
   runApp(const MyApp());
@@ -28,43 +29,43 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  String selectedCity = "Ankara";
-  String selectedDistrict = "Çankaya";
 
-  final List<String> cities = [
+late Future<List<dynamic>> provinces;
+late Future<List<dynamic>> districts;
 
-    'Ankara',
-    'İstanbul',
-    'İzmir',
-  ];
+  String? selectedProvince;
+  String? selectedDistrict;
 
-  final Map<String, List<String>> districts = {
-    
-    'Ankara': [
-      'Çankaya',
-      'Keçiören',
-      'Mamak',
-      'Yenimahalle',
-    ],
-    'İstanbul': [
-      'Beşiktaş',
-      'Kadıköy',
-      'Şişli',
-      'Üsküdar',
-    ],
-    'İzmir': [
-      'Bornova',
-      'Çiğli',
-      'Karşıyaka',
-      'Konak',
-    ],
-  };
+  Future<List<dynamic>> getProvinces() async {
+  final response = await http.get(Uri.parse('https://turkiyeapi.cyclic.app/api/v1/provinces'));
+     final parsed = jsonDecode(response.body);
+    return parsed['data'].map((province) => province).toList();
+}
 
+Future<List<dynamic>> getDistricts(int provinceId) async {
+  final response = await http.get(Uri.parse('https://turkiyeapi.cyclic.app/api/v1/provinces/$provinceId'));
+  final parsed = jsonDecode(response.body);
+  return List<Map<String, dynamic>>.from(parsed['data']['districts']);
 
-  void updateDistricts(String city) {
+}
+
+void initState() {
+    super.initState();
+    provinces = getProvinces();
+    districts = Future.value([]);
+  }
+
+  void _onProvinceSelected(String? value) {
     setState(() {
-      selectedCity = city;
-      selectedDistrict = districts[city]![0];
+      selectedProvince = value;
+      selectedDistrict = null;
+      districts = value != null ? getDistricts(int.parse(value)) : Future.value([]);
+    });
+  }
+
+  void _onDistrictSelected(String? value) {
+    setState(() {
+      selectedDistrict = value;
     });
   }
 
@@ -85,54 +86,62 @@ class _MyHomePageState extends State<MyHomePage> {
             Padding(
               padding: const EdgeInsets.only(
                   top: 70.0, left: 30.0, right: 30.0, bottom: 8.0),
-              child: DropdownButtonFormField(
-                value: selectedCity,
-                decoration: InputDecoration(
+              child: FutureBuilder<List<dynamic>>(
+                future: provinces,
+                builder: (context, snapshot) {
+                  if (snapshot.hasData) {
+                    return DropdownButtonFormField<String>(
+                      decoration: InputDecoration(
                   border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(10.0)),
                   labelText: "İl Seçiniz",
                 ),
-                onChanged: (String? value) {
-                  if (value != null) {
-                    setState(() {
-                      selectedCity = value;
-                    });
+                      value: selectedProvince,
+                      onChanged: _onProvinceSelected,
+                      items: snapshot.data!.map((province) {
+                        return DropdownMenuItem<String>(
+                          value: province['id'].toString(),
+                          child: Text(province['name']),
+                        );
+                      }).toList(),
+                    );
+                  } else if (snapshot.hasError) {
+                    return Text("${snapshot.error}");
                   }
-                  updateDistricts(value!);
+                  return const CircularProgressIndicator();
                 },
-                items: cities.map<DropdownMenuItem<String>>((String value) {
-                  return DropdownMenuItem<String>(
-                    value: value,
-                    child: Text(value),
-                  );
-                }).toList(),
               ),
             ),
             Padding(
-                padding: const EdgeInsets.only(
+              padding: const EdgeInsets.only(
                     top: 8.0, left: 30.0, right: 30.0, bottom: 8.0),
-                child: DropdownButtonFormField(
-                  value: selectedDistrict,
-                  decoration: InputDecoration(
-                    border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10.0)),
-                    labelText: "İlçe Seçiniz",
-                  ),
-                  onChanged: (String? value) {
-                    if (value != null) {
-                      setState(() {
-                        selectedDistrict = value;
-                      });
-                    }
-                  },
-                  items: districts[selectedCity]!
-                      .map<DropdownMenuItem<String>>((String value) {
-                    return DropdownMenuItem<String>(
-                      value: value,
-                      child: Text(value),
+              child: FutureBuilder<List<dynamic>>(
+                future: districts,
+                builder: (context, snapshot) {
+                  if (snapshot.hasData) {
+                    return DropdownButtonFormField<String>(
+                      decoration: InputDecoration(
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10.0)),
+                  labelText: "İlçe Seçiniz",
+                ),
+                      value: selectedDistrict,
+                      onChanged: _onDistrictSelected,
+                      items: snapshot.data!.map((district) {
+                        return DropdownMenuItem<String>(
+                          value: district['id'].toString(),
+                          child: Text(district['name']),
+                        );
+                      }).toList(),
                     );
-                  }).toList(),
-                )),
+                  } else if (snapshot.hasError) {
+                    return Text("${snapshot.error}");
+                  }
+            
+                  return const CircularProgressIndicator();
+                },
+              ),
+            ),
             ElevatedButton(
               style: ButtonStyle(
                   shape: MaterialStateProperty.all<RoundedRectangleBorder>(
@@ -147,7 +156,7 @@ class _MyHomePageState extends State<MyHomePage> {
                     context,
                     MaterialPageRoute(
                         builder: (context) => DetaySayfa(
-                              ilArama: selectedCity,
+                              ilArama: selectedProvince,
                               ilceArama: selectedDistrict,
                             )));
               },
