@@ -36,6 +36,10 @@ late Future<List<dynamic>> districts;
   String? selectedProvince;
   String? selectedDistrict;
 
+  String? selectedProvinceNamei;
+  String? selectedDistrictNamei;
+
+
   Future<List<dynamic>> getProvinces() async {
   final response = await http.get(Uri.parse('https://turkiyeapi.cyclic.app/api/v1/provinces'));
      final parsed = jsonDecode(response.body);
@@ -60,14 +64,29 @@ void initState() {
       selectedProvince = value;
       selectedDistrict = null;
       districts = value != null ? getDistricts(int.parse(value)) : Future.value([]);
+
+      if (value != null) {
+      final selectedProvinceName = provinces.then((value) => value.where((element) => element['id'].toString() == selectedProvince).toList()[0]['name']);
+      selectedProvinceName.then((value) => print('Selected Province: $value'));}
+
     });
   }
 
   void _onDistrictSelected(String? value) {
     setState(() {
       selectedDistrict = value;
+
+      if (value != null) {
+      final selectedDistrictName = districts.then((value) => value.where((element) => element['id'].toString() == selectedDistrict).toList()[0]['name']);
+      selectedDistrictName.then((value) => print('Selected District: $value'));
+
+      
+    }
+
     });
   }
+
+  
 
   @override
   Widget build(BuildContext context) {
@@ -156,8 +175,8 @@ void initState() {
                     context,
                     MaterialPageRoute(
                         builder: (context) => DetaySayfa(
-                              ilArama: selectedProvince,
-                              ilceArama: selectedDistrict,
+                              ilArama: selectedProvinceNamei,
+                              ilceArama: selectedDistrictNamei,
                             )));
               },
               child: Icon(Icons.search),
