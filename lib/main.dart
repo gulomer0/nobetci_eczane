@@ -29,31 +29,27 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-
-late Future<List<dynamic>> provinces;
-late Future<List<dynamic>> districts;
+  late Future<List<dynamic>> provinces;
+  late Future<List<dynamic>> districts;
 
   String? selectedProvince;
   String? selectedDistrict;
 
-  String? selectedProvinceNamei;
-  String? selectedDistrictNamei;
-
-
   Future<List<dynamic>> getProvinces() async {
-  final response = await http.get(Uri.parse('https://turkiyeapi.cyclic.app/api/v1/provinces'));
-     final parsed = jsonDecode(response.body);
+    final response = await http
+        .get(Uri.parse('https://turkiyeapi.cyclic.app/api/v1/provinces'));
+    final parsed = jsonDecode(response.body);
     return parsed['data'].map((province) => province).toList();
-}
+  }
 
-Future<List<dynamic>> getDistricts(int provinceId) async {
-  final response = await http.get(Uri.parse('https://turkiyeapi.cyclic.app/api/v1/provinces/$provinceId'));
-  final parsed = jsonDecode(response.body);
-  return List<Map<String, dynamic>>.from(parsed['data']['districts']);
+  Future<List<dynamic>> getDistricts(String provinceName) async {
+    final response = await http.get(Uri.parse(
+        'https://turkiyeapi.cyclic.app/api/v1/provinces?name=$provinceName'));
+    final parsed = jsonDecode(response.body);
+    return parsed['data'][0]['districts'].map((district) => district).toList();
+  }
 
-}
-
-void initState() {
+  void initState() {
     super.initState();
     provinces = getProvinces();
     districts = Future.value([]);
@@ -63,30 +59,16 @@ void initState() {
     setState(() {
       selectedProvince = value;
       selectedDistrict = null;
-      districts = value != null ? getDistricts(int.parse(value)) : Future.value([]);
-
-      if (value != null) {
-      final selectedProvinceName = provinces.then((value) => value.where((element) => element['id'].toString() == selectedProvince).toList()[0]['name']);
-      selectedProvinceName.then((value) => print('Selected Province: $value'));}
-
+      districts =
+          value != null ? getDistricts(value) : Future.value([]);
     });
   }
 
   void _onDistrictSelected(String? value) {
     setState(() {
       selectedDistrict = value;
-
-      if (value != null) {
-      final selectedDistrictName = districts.then((value) => value.where((element) => element['id'].toString() == selectedDistrict).toList()[0]['name']);
-      selectedDistrictName.then((value) => print('Selected District: $value'));
-
-      
-    }
-
     });
   }
-
-  
 
   @override
   Widget build(BuildContext context) {
@@ -94,7 +76,7 @@ void initState() {
       appBar: AppBar(
           centerTitle: true,
           elevation: 0,
-          title: Text("Nöbetçi Eczane"),
+          title: Text("Hangi Eczane"),
           backgroundColor: Color.fromRGBO(0, 113, 188, 1)),
       body: Center(
           child: SingleChildScrollView(
@@ -111,15 +93,15 @@ void initState() {
                   if (snapshot.hasData) {
                     return DropdownButtonFormField<String>(
                       decoration: InputDecoration(
-                  border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10.0)),
-                  labelText: "İl Seçiniz",
-                ),
+                        border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10.0)),
+                        labelText: "İl Seçiniz",
+                      ),
                       value: selectedProvince,
                       onChanged: _onProvinceSelected,
                       items: snapshot.data!.map((province) {
                         return DropdownMenuItem<String>(
-                          value: province['id'].toString(),
+                          value: province['name'],
                           child: Text(province['name']),
                         );
                       }).toList(),
@@ -133,22 +115,22 @@ void initState() {
             ),
             Padding(
               padding: const EdgeInsets.only(
-                    top: 8.0, left: 30.0, right: 30.0, bottom: 8.0),
+                  top: 8.0, left: 30.0, right: 30.0, bottom: 8.0),
               child: FutureBuilder<List<dynamic>>(
                 future: districts,
                 builder: (context, snapshot) {
                   if (snapshot.hasData) {
                     return DropdownButtonFormField<String>(
                       decoration: InputDecoration(
-                  border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10.0)),
-                  labelText: "İlçe Seçiniz",
-                ),
+                        border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10.0)),
+                        labelText: "İlçe Seçiniz",
+                      ),
                       value: selectedDistrict,
                       onChanged: _onDistrictSelected,
                       items: snapshot.data!.map((district) {
                         return DropdownMenuItem<String>(
-                          value: district['id'].toString(),
+                          value: district['name'],
                           child: Text(district['name']),
                         );
                       }).toList(),
@@ -156,7 +138,7 @@ void initState() {
                   } else if (snapshot.hasError) {
                     return Text("${snapshot.error}");
                   }
-            
+
                   return const CircularProgressIndicator();
                 },
               ),
@@ -171,13 +153,19 @@ void initState() {
                   backgroundColor: MaterialStateProperty.all<Color>(
                       Color.fromRGBO(0, 113, 188, 1))),
               onPressed: () {
+
+                if(selectedProvince == null || selectedDistrict == null){
+                  return;
+                }
+
                 Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (context) => DetaySayfa(
-                              ilArama: selectedProvinceNamei,
-                              ilceArama: selectedDistrictNamei,
-                            )));
+                  context,
+                  MaterialPageRoute(
+                      builder: (context) => DetaySayfa(
+                            ilArama: selectedProvince,
+                            ilceArama: selectedDistrict,
+                          )),
+                );        
               },
               child: Icon(Icons.search),
             ),
