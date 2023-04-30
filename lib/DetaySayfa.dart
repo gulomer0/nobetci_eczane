@@ -105,7 +105,7 @@ class _DetaySayfaState extends State<DetaySayfa> {
                                 IconButton(
                                     onPressed: () {
                                       FlutterPhoneDirectCaller.callNumber(
-                                          snapshot.data!.result[index].phone);
+                                          "0${snapshot.data!.result[index].phone}");
                                     },
                                     icon: Icon(Icons.phone,
                                         color: Colors.greenAccent, size: 35)),
